@@ -1,0 +1,70 @@
+use capstone;
+show tables;
+
+
+-- question 1
+select distinct p.name, p.pid from player p
+join registration r using(pid)
+join playedin pi using(RegistrNum)
+where pi.seed is not NULL;
+
+-- question 2
+select name, TType, StartDate, EndDate, NumRounds from tournament 
+where NumRounds > 5;
+
+-- question3
+select name, TType, NumRounds, Surface 
+from tournament
+order by NumRounds desc;
+
+-- question 4
+select name, ttype, datediff(enddate,startdate) as length_in_days 
+from tournament
+having length_in_days > 7;
+
+-- question 5
+
+create view registr as
+select registrnum from registration where pid = (select pid from player where name = 'Tommy Haas');
+
+select * from registr;
+
+create view against_haas as
+select registrnum1 from matches where registrnum1 not in(select * from registr) and registrnum2 in(select * from registr) union
+select registrnum2 from matches where registrnum2 not in(select* from registr) and registrnum1 in(select *from registr);
+
+select * from against_haas;
+
+select distinct name, pid from player
+join registration using(pid)
+where registrnum in (select * from against_haas) and ccode in('RUS','CHI','USA');
+
+-- question 6
+create view match_ids as
+select mid from matchresults mr 
+where winner in (select registrnum from registration where pid =(select pid from player where name = "Roger Federer")) union
+select mid from tiebreaker
+where winnertb = 0;
+
+select * from match_ids;
+
+create view mt_federer as
+select mid, registrnum1, registrnum2, tid from matches join match_ids using(mid);
+
+select * from mt_federer;
+
+create view type_single as
+select name,numrounds,ttype,m.*
+from matches m join tournament t using (tid)
+where m.round=t.numrounds and ttype='Singles';
+
+select * from type_single;
+
+create view finals as
+select s.* from type_single s join tournament t using(tid)
+join mt_federer using(mid);
+select * from finals;
+
+select p.name, f.name from player p 
+join registration r using(PID) 
+join finals f where f.registrnum2 = r.registrnum;
